@@ -1,0 +1,26 @@
+{
+  "name": "Kimi 右侧边栏",
+  "version": "1.0",
+  "manifest_version": 3,
+  "description": "点击插件，在右侧边栏展示 Kimi 网站",
+  "action": {
+    "default_title": "打开 Kimi 侧边栏",
+    "default_icon": {
+      "16": "images/icon16.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "permissions": ["sidePanel", "tabs"],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+} 

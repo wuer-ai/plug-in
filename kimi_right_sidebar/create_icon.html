@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>生成图标</title>
+  <meta charset="UTF-8">
+</head>
+<body>
+  <canvas id="icon16" width="16" height="16"></canvas>
+  <canvas id="icon48" width="48" height="48"></canvas>
+  <canvas id="icon128" width="128" height="128"></canvas>
+  
+  <script>
+    // 生成简单的K字样图标
+    function drawIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      
+      // 背景
+      ctx.fillStyle = '#1f77c0';
+      ctx.fillRect(0, 0, size, size);
+      
+      // 绘制K字
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${Math.floor(size * 0.7)}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('K', size/2, size/2);
+      
+      // 保存图标
+      const link = document.createElement('a');
+      link.download = `icon${size}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+    
+    // 页面加载后生成所有尺寸的图标
+    window.onload = function() {
+      drawIcon('icon16', 16);
+      drawIcon('icon48', 48);
+      drawIcon('icon128', 128);
+    };
+  </script>
+  
+  <p>打开此页面后，浏览器将自动下载三个不同尺寸的图标文件。</p>
+  <p>将这些图标文件（icon16.png、icon48.png、icon128.png）放到项目的<strong>images</strong>文件夹中。</p>
+  <p>如果images文件夹不存在，请先创建此文件夹。</p>
+</body>
+</html> 
