@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>高清网页截图</title>
+  <link rel="stylesheet" href="css/popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>高清网页截图</h1>
+    
+    <div class="section">
+      <div class="option-group">
+        <label for="format">图片格式:</label>
+        <select id="format">
+          <option value="jpeg" selected>JPG</option>
+          <option value="png">PNG</option>
+        </select>
+      </div>
+      
+      <div class="option-group" id="quality-container">
+        <label for="quality">图片质量:</label>
+        <div class="quality-slider">
+          <input type="range" id="quality" min="10" max="100" value="90" step="5">
+          <span id="quality-value">90%</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="buttons">
+      <button id="capture-visible" class="btn primary">截取可见区域</button>
+      <button id="capture-full" class="btn primary">截取整个页面</button>
+    </div>
+    
+    <div class="status" id="status-message"></div>
+    
+    <div class="footer">
+      <div class="info">
+        <p>截取整个页面可能需要几秒钟时间，请耐心等待</p>
+      </div>
+    </div>
+  </div>
+  
+  <script src="js/popup.js"></script>
+</body>
+</html>

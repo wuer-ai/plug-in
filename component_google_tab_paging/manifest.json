@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Google标签自动分组",
+  "version": "1.0",
+  "description": "根据配置的域名自动将Google浏览器的标签页进行分组",
+  "permissions": [
+    "storage",
+    "tabs",
+    "tabGroups"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "images/icon16.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  }
+}
