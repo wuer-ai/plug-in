@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中英互译助手图标生成器</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .generator {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .controls label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        .preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .preview {
+            text-align: center;
+        }
+        .preview canvas {
+            border: 1px solid #ccc;
+            background-color: #fff;
+        }
+        .preview p {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        input[type="color"], input[type="text"], select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .instructions {
+            background-color: #e8f4fe;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>中英互译助手图标生成器</h1>
+    <div class="instructions">
+        <h2>使用说明</h2>
+        <p>此工具可以帮助您为Chrome扩展生成所需的三个尺寸的图标文件。按照以下步骤操作：</p>
+        <ol>
+            <li>选择图标类型（纯文本或预设模板）</li>
+            <li>自定义颜色、文本等设置</li>
+            <li>预览生成的图标</li>
+            <li>点击"下载图标"按钮保存所有尺寸的图标文件</li>
+            <li>将下载的图标文件放置在扩展项目的 <code>images</code> 文件夹中</li>
+        </ol>
+    </div>
+
+    <div class="generator">
+        <div class="controls">
+            <label for="icon-type">图标类型：</label>
+            <select id="icon-type">
+                <option value="text">文本图标</option>
+                <option value="template">预设模板</option>
+            </select>
+
+            <div id="text-options">
+                <label for="icon-text">图标文本：</label>
+                <input type="text" id="icon-text" value="中英" maxlength="4">
+
+                <label for="text-color">文本颜色：</label>
+                <input type="color" id="text-color" value="#ffffff">
+            </div>
+
+            <div id="template-options" style="display: none;">
+                <label for="template-select">选择模板：</label>
+                <select id="template-select">
+                    <option value="translation1">翻译图标 1</option>
+                    <option value="translation2">翻译图标 2</option>
+                    <option value="language">语言切换图标</option>
+                </select>
+            </div>
+
+            <label for="bg-color">背景颜色：</label>
+            <input type="color" id="bg-color" value="#4285f4">
+        </div>
+
+        <h3>预览：</h3>
+        <div class="preview-container">
+            <div class="preview">
+                <canvas id="preview16" width="16" height="16"></canvas>
+                <p>16×16像素</p>
+            </div>
+            <div class="preview">
+                <canvas id="preview48" width="48" height="48"></canvas>
+                <p>48×48像素</p>
+            </div>
+            <div class="preview">
+                <canvas id="preview128" width="128" height="128"></canvas>
+                <p>128×128像素</p>
+            </div>
+        </div>
+
+        <button id="generate-btn">重新生成预览</button>
+        <button id="download-btn">下载所有图标</button>
+    </div>
+
+    <div class="footer">
+        <p>注意：生成的图标文件将被命名为 icon16.png, icon48.png 和 icon128.png，与 manifest.json 中配置的路径相匹配。</p>
+        <p>此工具在您的浏览器本地运行，图标不会上传到任何服务器。</p>
+    </div>
+
+    <script>
+        // 获取DOM元素引用
+        const iconType = document.getElementById('icon-type');
+        const textOptions = document.getElementById('text-options');
+        const templateOptions = document.getElementById('template-options');
+        const iconText = document.getElementById('icon-text');
+        const textColor = document.getElementById('text-color');
+        const bgColor = document.getElementById('bg-color');
+        const templateSelect = document.getElementById('template-select');
+        const generateBtn = document.getElementById('generate-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const preview16 = document.getElementById('preview16');
+        const preview48 = document.getElementById('preview48');
+        const preview128 = document.getElementById('preview128');
+
+        // 监听图标类型选择变化
+        iconType.addEventListener('change', function() {
+            if (this.value === 'text') {
+                textOptions.style.display = 'block';
+                templateOptions.style.display = 'none';
+            } else {
+                textOptions.style.display = 'none';
+                templateOptions.style.display = 'block';
+            }
+            generateIcons();
+        });
+
+        // 监听其他输入变化
+        iconText.addEventListener('input', generateIcons);
+        textColor.addEventListener('input', generateIcons);
+        bgColor.addEventListener('input', generateIcons);
+        templateSelect.addEventListener('change', generateIcons);
+        generateBtn.addEventListener('click', generateIcons);
+        
+        // 下载按钮事件
+        downloadBtn.addEventListener('click', downloadIcons);
+
+        // 初始生成图标
+        generateIcons();
+
+        // 生成图标函数
+        function generateIcons() {
+            const type = iconType.value;
+            
+            // 生成每个尺寸的图标
+            generateIcon(preview16.getContext('2d'), 16);
+            generateIcon(preview48.getContext('2d'), 48);
+            generateIcon(preview128.getContext('2d'), 128);
+        }
+
+        // 生成单个图标
+        function generateIcon(ctx, size) {
+            const type = iconType.value;
+            const bgColorValue = bgColor.value;
+            
+            // 清除画布
+            ctx.clearRect(0, 0, size, size);
+            
+            // 绘制背景圆形
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+            ctx.fillStyle = bgColorValue;
+            ctx.fill();
+            
+            if (type === 'text') {
+                // 文本类型图标
+                const text = iconText.value;
+                const textColorValue = textColor.value;
+                
+                ctx.fillStyle = textColorValue;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // 根据尺寸设置字体大小
+                const fontSize = Math.floor(size * 0.5);
+                ctx.font = `bold ${fontSize}px Arial, "Microsoft YaHei"`;
+                
+                // 如果文本长度为2，则居中显示
+                if (text.length <= 2) {
+                    ctx.fillText(text, size/2, size/2);
+                } else {
+                    // 如果文本较长，分两行显示
+                    const firstLine = text.substring(0, Math.ceil(text.length/2));
+                    const secondLine = text.substring(Math.ceil(text.length/2));
+                    
+                    ctx.fillText(firstLine, size/2, size/2 - fontSize/2);
+                    ctx.fillText(secondLine, size/2, size/2 + fontSize/2);
+                }
+            } else {
+                // 模板类型图标
+                const template = templateSelect.value;
+                
+                // 根据选择的模板绘制图标
+                switch(template) {
+                    case 'translation1':
+                        drawTranslationIcon1(ctx, size);
+                        break;
+                    case 'translation2':
+                        drawTranslationIcon2(ctx, size);
+                        break;
+                    case 'language':
+                        drawLanguageIcon(ctx, size);
+                        break;
+                }
+            }
+        }
+
+        // 绘制翻译图标模板1
+        function drawTranslationIcon1(ctx, size) {
+            const padding = size * 0.2;
+            const textColorValue = '#ffffff';
+            
+            // 绘制"A"在左上角
+            ctx.fillStyle = textColorValue;
+            ctx.font = `bold ${Math.floor(size * 0.35)}px Arial`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText('A', padding, padding);
+            
+            // 绘制"文"在右下角
+            ctx.font = `bold ${Math.floor(size * 0.35)}px "Microsoft YaHei"`;
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('文', size - padding, size - padding);
+            
+            // 绘制中间的箭头
+            const arrowSize = size * 0.25;
+            ctx.strokeStyle = textColorValue;
+            ctx.lineWidth = Math.max(1, size * 0.05);
+            
+            // 绘制箭头干
+            ctx.beginPath();
+            ctx.moveTo(size * 0.35, size * 0.65);
+            ctx.lineTo(size * 0.65, size * 0.35);
+            ctx.stroke();
+            
+            // 绘制箭头头
+            ctx.beginPath();
+            ctx.moveTo(size * 0.65, size * 0.35);
+            ctx.lineTo(size * 0.55, size * 0.35);
+            ctx.lineTo(size * 0.65, size * 0.25);
+            ctx.lineTo(size * 0.75, size * 0.35);
+            ctx.lineTo(size * 0.65, size * 0.35);
+            ctx.fillStyle = textColorValue;
+            ctx.fill();
+        }
+
+        // 绘制翻译图标模板2
+        function drawTranslationIcon2(ctx, size) {
+            const textColorValue = '#ffffff';
+            
+            // 绘制两个小方块
+            const boxSize = size * 0.3;
+            const margin = size * 0.15;
+            
+            // 左上方块
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(margin, margin, boxSize, boxSize);
+            
+            // 右下方块
+            ctx.fillRect(size - margin - boxSize, size - margin - boxSize, boxSize, boxSize);
+            
+            // 绘制"中"和"A"
+            ctx.fillStyle = textColorValue;
+            
+            // 绘制"中"
+            ctx.font = `bold ${Math.floor(boxSize * 0.8)}px "Microsoft YaHei"`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('中', margin + boxSize/2, margin + boxSize/2);
+            
+            // 绘制"A"
+            ctx.font = `bold ${Math.floor(boxSize * 0.8)}px Arial`;
+            ctx.fillText('A', size - margin - boxSize/2, size - margin - boxSize/2);
+            
+            // 绘制转换箭头
+            ctx.strokeStyle = textColorValue;
+            ctx.lineWidth = Math.max(1, size * 0.04);
+            
+            // 箭头主干
+            ctx.beginPath();
+            ctx.moveTo(size * 0.35, size * 0.5);
+            ctx.lineTo(size * 0.65, size * 0.5);
+            ctx.stroke();
+            
+            // 箭头头部
+            const headSize = size * 0.08;
+            ctx.beginPath();
+            ctx.moveTo(size * 0.65, size * 0.5);
+            ctx.lineTo(size * 0.65 - headSize, size * 0.5 - headSize);
+            ctx.lineTo(size * 0.65 - headSize, size * 0.5 + headSize);
+            ctx.lineTo(size * 0.65, size * 0.5);
+            ctx.fillStyle = textColorValue;
+            ctx.fill();
+        }
+
+        // 绘制语言切换图标
+        function drawLanguageIcon(ctx, size) {
+            const textColorValue = '#ffffff';
+            
+            // 绘制地球形状
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size * 0.35, 0, Math.PI * 2);
+            ctx.strokeStyle = textColorValue;
+            ctx.lineWidth = Math.max(1, size * 0.05);
+            ctx.stroke();
+            
+            // 绘制经纬线
+            // 水平线
+            ctx.beginPath();
+            ctx.moveTo(size * 0.15, size * 0.5);
+            ctx.lineTo(size * 0.85, size * 0.5);
+            ctx.stroke();
+            
+            // 垂直线
+            ctx.beginPath();
+            ctx.moveTo(size * 0.5, size * 0.15);
+            ctx.lineTo(size * 0.5, size * 0.85);
+            ctx.stroke();
+            
+            // 绘制"中英"文本在地球底部
+            ctx.fillStyle = textColorValue;
+            ctx.font = `bold ${Math.floor(size * 0.2)}px "Microsoft YaHei"`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('中英', size/2, size * 0.9);
+        }
+
+        // 下载所有图标
+        function downloadIcons() {
+            // 下载16x16图标
+            downloadCanvas(preview16, 'icon16.png');
+            
+            // 下载48x48图标
+            downloadCanvas(preview48, 'icon48.png');
+            
+            // 下载128x128图标
+            downloadCanvas(preview128, 'icon128.png');
+            
+            alert('图标已生成，请保存到扩展项目的 images 文件夹中');
+        }
+
+        // 下载单个Canvas为图片
+        function downloadCanvas(canvas, filename) {
+            // 创建临时链接
+            const link = document.createElement('a');
+            link.download = filename;
+            
+            // 转换canvas为图片URL
+            canvas.toBlob(function(blob) {
+                link.href = URL.createObjectURL(blob);
+                link.click();
+                
+                // 清理
+                URL.revokeObjectURL(link.href);
+            }, 'image/png');
+        }
+    </script>
+</body>
+</html> 

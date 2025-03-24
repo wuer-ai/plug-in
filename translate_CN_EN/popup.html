@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>中英互译助手</title>
+  <style>
+    body {
+      width: 320px;
+      height: 300px;
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f7f7f7;
+    }
+    
+    .container {
+      padding: 16px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 16px;
+      color: #333;
+      position: relative;
+    }
+    
+    .input-area {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 16px;
+    }
+    
+    textarea {
+      height: 100px;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      resize: none;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    
+    .result-area {
+      background-color: #fff;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      min-height: 100px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    
+    .lang-info {
+      font-size: 11px;
+      color: #888;
+      text-align: right;
+    }
+    
+    .config-area {
+      margin-top: 8px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .btn-translate {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .btn-translate:hover {
+      background-color: #2b6ed9;
+    }
+    
+    .btn-clear {
+      background-color: transparent;
+      color: #888;
+      border: 1px solid #ddd;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .loading {
+      text-align: center;
+      color: #888;
+    }
+    
+    .footer {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 11px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 class="header">
+      中英互译助手
+    </h2>
+    
+    <div class="input-area">
+      <textarea id="input-text" placeholder="请输入要翻译的文本..."></textarea>
+      <div class="config-area">
+        <button id="btn-clear" class="btn-clear">清空</button>
+        <button id="btn-translate" class="btn-translate">翻译</button>
+      </div>
+    </div>
+    
+    <div id="result-area" class="result-area">
+      <div id="translation-result"></div>
+      <div id="lang-info" class="lang-info"></div>
+    </div>
+    
+    <div class="footer">
+      提示：在网页上选中文本可自动翻译
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html> 

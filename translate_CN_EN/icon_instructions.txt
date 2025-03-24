@@ -1,0 +1,26 @@
+# 图标准备说明
+
+扩展程序需要以下尺寸的图标文件：
+- 16x16像素 (images/icon16.png)
+- 48x48像素 (images/icon48.png)
+- 128x128像素 (images/icon128.png)
+
+您可以通过以下方式获取这些图标：
+
+1. 使用在线图标生成工具创建，例如：
+   - https://www.favicon-generator.org/
+   - https://realfavicongenerator.net/
+   - https://www.canva.com/
+
+2. 使用现有的翻译相关图标，推荐使用简洁、扁平化的图标设计
+   - 建议选择语言切换或翻译相关的图标设计
+   - 图标应当使用PNG格式，确保背景透明
+
+3. 如需快速替代解决方案，您可以从以下网站下载免费图标：
+   - https://www.flaticon.com/
+   - https://www.iconfinder.com/
+   - https://iconmonstr.com/
+
+请确保您使用的图标拥有合法的使用权限，或者选择开源/免费授权的图标资源。
+
+将所有图标文件放置在项目根目录下的 "images" 文件夹中，图标命名需要严格按照manifest.json中定义的路径和文件名。 
