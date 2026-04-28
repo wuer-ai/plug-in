@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Chrome 收藏夹整理器",
+  "version": "0.1.0",
+  "description": "免费优先的 Chrome 收藏夹整理插件，支持本地规则整理与可选 AI API 扩展。",
+  "permissions": [
+    "bookmarks",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Chrome 收藏夹整理器",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html"
+}

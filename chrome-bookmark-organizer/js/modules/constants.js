@@ -1,0 +1,121 @@
+export const ORGANIZER_ROOT_TITLE = "Bookmark Organizer";
+
+export const STORAGE_KEYS = {
+  settings: "bookmarkOrganizer.settings",
+  lastPlan: "bookmarkOrganizer.lastPlan",
+  lastApply: "bookmarkOrganizer.lastApply",
+};
+
+export const DEFAULT_SETTINGS = {
+  aiEnabled: false,
+  provider: "local",
+  model: "",
+  apiBaseUrl: "https://api.openai.com/v1",
+  apiKey: "",
+  sendTitlesOnly: true,
+  remoteNamingOnly: true,
+  lowConfidenceThreshold: 0.72,
+  maxAiGroupCount: 5,
+};
+
+export const TRACKING_QUERY_KEYS = new Set([
+  "fbclid",
+  "gclid",
+  "igshid",
+  "mc_cid",
+  "mc_eid",
+  "ref",
+  "spm",
+  "utm_campaign",
+  "utm_content",
+  "utm_id",
+  "utm_medium",
+  "utm_name",
+  "utm_source",
+  "utm_term",
+]);
+
+export const CATEGORY_RULES = [
+  {
+    key: "ai",
+    folderPath: ["分类整理", "AI 工具与资料"],
+    keywords: [
+      "agent",
+      "ai",
+      "chatgpt",
+      "claude",
+      "gemini",
+      "gpt",
+      "huggingface",
+      "llm",
+      "openai",
+      "prompt",
+      "rag",
+      "人工智能",
+    ],
+    domains: ["ai.google.dev", "chatgpt.com", "claude.ai", "huggingface.co", "openai.com"],
+    paths: ["/ai", "/model", "/models", "/prompt"],
+  },
+  {
+    key: "docs",
+    folderPath: ["分类整理", "开发文档"],
+    keywords: [
+      "api",
+      "developer",
+      "docs",
+      "documentation",
+      "mdn",
+      "reference",
+      "sdk",
+      "开发",
+      "文档",
+    ],
+    domains: ["developer.mozilla.org", "developers.google.com", "docs.github.com", "react.dev"],
+    paths: ["/api", "/developer", "/docs", "/reference"],
+  },
+  {
+    key: "video",
+    folderPath: ["分类整理", "视频内容"],
+    keywords: ["bilibili", "playlist", "video", "watch", "youtube", "视频"],
+    domains: ["bilibili.com", "vimeo.com", "youtube.com", "youtu.be"],
+    paths: ["/playlist", "/shorts", "/video", "/watch"],
+  },
+  {
+    key: "learning",
+    folderPath: ["分类整理", "学习课程"],
+    keywords: [
+      "bootcamp",
+      "course",
+      "learn",
+      "lesson",
+      "study",
+      "tutorial",
+      "学习",
+      "教程",
+      "课程",
+    ],
+    domains: ["coursera.org", "udemy.com"],
+    paths: ["/course", "/learn", "/lesson", "/tutorial"],
+  },
+  {
+    key: "news",
+    folderPath: ["分类整理", "文章与资讯"],
+    keywords: ["article", "blog", "insight", "medium", "news", "newsletter", "post", "资讯"],
+    domains: ["medium.com", "substack.com"],
+    paths: ["/article", "/blog", "/news", "/posts"],
+  },
+  {
+    key: "tools",
+    folderPath: ["分类整理", "在线工具"],
+    keywords: ["admin", "app", "console", "dashboard", "platform", "studio", "tool", "workspace"],
+    domains: ["figma.com", "notion.so"],
+    paths: ["/app", "/console", "/dashboard", "/workspace"],
+  },
+  {
+    key: "shopping",
+    folderPath: ["分类整理", "购物与商品"],
+    keywords: ["amazon", "buy", "deal", "price", "product", "shop", "商品", "购物"],
+    domains: ["amazon.com", "jd.com", "taobao.com", "tmall.com"],
+    paths: ["/dp/", "/item", "/product", "/shop"],
+  },
+];

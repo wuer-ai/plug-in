@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chrome 收藏夹整理器设置</title>
+    <link rel="stylesheet" href="styles/common.css" />
+    <link rel="stylesheet" href="styles/options.css" />
+  </head>
+  <body class="options-body">
+    <main class="settings-shell">
+      <section class="hero">
+        <span class="eyebrow">Settings</span>
+        <h1>AI 扩展设置</h1>
+        <p>
+          默认只用本地规则引擎。你也可以开启远程 AI，专门用于低置信度分组补判或文件夹命名优化。
+        </p>
+      </section>
+
+      <section class="panel form-panel">
+        <label class="toggle-row">
+          <span>
+            <strong>启用远程 AI 增强</strong>
+            <small>关闭时，插件完全按免费优先策略运行。</small>
+          </span>
+          <input id="aiEnabled" type="checkbox" />
+        </label>
+
+        <label class="field">
+          <span>Provider</span>
+          <select id="provider">
+            <option value="local">local</option>
+            <option value="gemini">gemini</option>
+            <option value="openai-compatible">openai-compatible</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>模型名</span>
+          <input
+            id="model"
+            type="text"
+            placeholder="例如：gemini-2.5-flash 或 gpt-4.1-mini"
+          />
+        </label>
+
+        <label class="field">
+          <span>API Base URL</span>
+          <input
+            id="apiBaseUrl"
+            type="text"
+            placeholder="OpenAI 兼容接口可填写，例如 https://api.openai.com/v1"
+          />
+        </label>
+
+        <label class="field">
+          <span>API Key</span>
+          <input id="apiKey" type="password" placeholder="仅保存在当前扩展存储中" />
+        </label>
+
+        <label class="toggle-row">
+          <span>
+            <strong>仅发送标题与域名</strong>
+            <small>默认尽量减少外发数据，保护隐私。</small>
+          </span>
+          <input id="sendTitlesOnly" type="checkbox" />
+        </label>
+
+        <label class="toggle-row">
+          <span>
+            <strong>只做命名优化</strong>
+            <small>开启后，远程 AI 主要优化文件夹名称，不重做核心分类。</small>
+          </span>
+          <input id="remoteNamingOnly" type="checkbox" />
+        </label>
+
+        <label class="field">
+          <span>低置信度阈值</span>
+          <input
+            id="lowConfidenceThreshold"
+            type="number"
+            min="0.4"
+            max="0.95"
+            step="0.01"
+          />
+        </label>
+
+        <label class="field">
+          <span>单次最多送交 AI 的分组数</span>
+          <input id="maxAiGroupCount" type="number" min="1" max="20" step="1" />
+        </label>
+
+        <div class="button-row">
+          <button id="saveButton" class="button button-primary">保存设置</button>
+          <button id="resetButton" class="button button-subtle">恢复默认</button>
+        </div>
+
+        <div id="settingsStatus" class="status-box">
+          当前默认值已经偏向免费优先，不开启远程 AI 也可以正常使用插件。
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="js/options.js"></script>
+  </body>
+</html>

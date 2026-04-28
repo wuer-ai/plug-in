@@ -1,0 +1,26 @@
+.popup-body {
+  min-width: 420px;
+}
+
+.shell {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  .popup-body {
+    min-width: 360px;
+  }
+
+  .controls,
+  .summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
