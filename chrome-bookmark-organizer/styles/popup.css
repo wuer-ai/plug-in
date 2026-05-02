@@ -1,5 +1,6 @@
 .popup-body {
   min-width: 420px;
+  max-width: 420px;
 }
 
 .shell {
@@ -16,11 +17,6 @@
 
 @media (max-width: 520px) {
   .popup-body {
-    min-width: 360px;
-  }
-
-  .controls,
-  .summary-grid {
-    grid-template-columns: minmax(0, 1fr);
+    min-width: 380px;
   }
 }

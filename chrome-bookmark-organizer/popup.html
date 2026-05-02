@@ -10,10 +10,10 @@
   <body class="popup-body">
     <main class="shell">
       <section class="hero">
-        <span class="eyebrow">Free First · API Ready</span>
+        <span class="eyebrow">AI Summary Required</span>
         <h1>Chrome 收藏夹整理器</h1>
         <p>
-          先用本地规则做整理，再按需接入 AI API 做命名优化或低置信度补判。
+          本地只负责扫描清点；收藏移动分组由 AI 汇总生成，避免规则误判越整理越乱。
         </p>
       </section>
 
@@ -30,6 +30,16 @@
           <span id="scanTime" class="muted">尚未扫描</span>
         </div>
         <div id="summaryGrid" class="summary-grid"></div>
+      </section>
+
+      <section class="panel status-panel">
+        <div class="section-head">
+          <h2>运行状态</h2>
+          <span id="providerStatus" class="muted">等待 AI 配置</span>
+        </div>
+        <div id="statusMessage" class="status-box">
+          请先在设置中配置 AI Provider、模型名和 API Key，然后扫描生成整理建议。
+        </div>
       </section>
 
       <section class="panel">
@@ -49,16 +59,6 @@
         </div>
         <div id="suggestionsList" class="stack-list empty-state">
           扫描后会在这里显示建议分类与目标文件夹。
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="section-head">
-          <h2>运行状态</h2>
-          <span id="providerStatus" class="muted">本地模式</span>
-        </div>
-        <div id="statusMessage" class="status-box">
-          当前骨架已支持扫描、预览、应用、撤销，以及 AI Provider 接口占位。
         </div>
       </section>
     </main>

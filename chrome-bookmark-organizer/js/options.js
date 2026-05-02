@@ -30,7 +30,7 @@ function bindEvents() {
     try {
       const settings = readForm();
       await saveSettings(settings);
-      renderStatus("设置已保存。下次扫描时会按新的 AI 策略执行。", "success");
+      renderStatus("设置已保存。下次扫描会直接请求 AI 汇总生成整理建议。", "success");
     } catch (error) {
       renderStatus(error.message, "error");
     }
@@ -45,12 +45,15 @@ function bindEvents() {
 
 function renderForm(settings) {
   fields.aiEnabled.checked = Boolean(settings.aiEnabled);
-  fields.provider.value = settings.provider;
+  fields.provider.value =
+    settings.provider === "gemini" || settings.provider === "openai-compatible"
+      ? settings.provider
+      : DEFAULT_SETTINGS.provider;
   fields.model.value = settings.model;
   fields.apiBaseUrl.value = settings.apiBaseUrl;
   fields.apiKey.value = settings.apiKey;
   fields.sendTitlesOnly.checked = Boolean(settings.sendTitlesOnly);
-  fields.remoteNamingOnly.checked = Boolean(settings.remoteNamingOnly);
+  fields.remoteNamingOnly.checked = true;
   fields.lowConfidenceThreshold.value = String(settings.lowConfidenceThreshold);
   fields.maxAiGroupCount.value = String(settings.maxAiGroupCount);
 }
@@ -63,8 +66,8 @@ function readForm() {
     throw new Error("低置信度阈值需要在 0.4 到 0.95 之间。");
   }
 
-  if (!Number.isFinite(maxAiGroupCount) || maxAiGroupCount < 1 || maxAiGroupCount > 20) {
-    throw new Error("单次 AI 分组数需要在 1 到 20 之间。");
+  if (!Number.isFinite(maxAiGroupCount) || maxAiGroupCount < 20 || maxAiGroupCount > 1000) {
+    throw new Error("单次 AI 收藏数需要在 20 到 1000 之间。");
   }
 
   return {
@@ -74,7 +77,7 @@ function readForm() {
     apiBaseUrl: fields.apiBaseUrl.value.trim(),
     apiKey: fields.apiKey.value.trim(),
     sendTitlesOnly: fields.sendTitlesOnly.checked,
-    remoteNamingOnly: fields.remoteNamingOnly.checked,
+    remoteNamingOnly: false,
     lowConfidenceThreshold: threshold,
     maxAiGroupCount,
   };

@@ -1,42 +1,38 @@
-import {
-  CATEGORY_RULES,
-  ORGANIZER_ROOT_TITLE,
-  TRACKING_QUERY_KEYS,
-} from "./constants.js";
+import { ORGANIZER_ROOT_TITLE, TRACKING_QUERY_KEYS } from "./constants.js";
 
 export function analyzeBookmarks(tree) {
-  const { bookmarks, folderCount } = flattenBookmarkTree(tree);
+  const { bookmarks, folderCount } = createBookmarkInventory(tree);
+  const emptyFolders = collectEmptyFolders(tree);
   const duplicateGroups = detectDuplicateGroups(bookmarks);
   const duplicateIds = new Set(
     duplicateGroups.flatMap((group) => group.bookmarkIds),
   );
-  const suggestions = buildMoveSuggestions(bookmarks, duplicateIds);
+  const cleanupSuggestion = buildEmptyFolderCleanupSuggestion(emptyFolders);
+  const suggestions = cleanupSuggestion ? [cleanupSuggestion] : [];
 
   return {
     generatedAt: new Date().toISOString(),
     summary: {
       totalBookmarks: bookmarks.length,
       folderCount,
+      emptyFolderCount: emptyFolders.length,
       duplicateGroupCount: duplicateGroups.length,
       duplicateBookmarkCount: duplicateGroups.reduce((sum, group) => sum + group.count, 0),
       suggestedGroupCount: suggestions.length,
-      moveCandidateCount: suggestions.reduce((sum, group) => sum + group.bookmarkCount, 0),
-      ungroupedCount:
-        bookmarks.length -
-        duplicateIds.size -
-        suggestions.reduce((sum, group) => sum + group.bookmarkCount, 0),
+      moveCandidateCount: 0,
+      ungroupedCount: bookmarks.length - duplicateIds.size,
     },
     duplicateGroups,
     suggestions,
     ai: {
       provider: "local",
-      status: "idle",
-      message: "Local rules only",
+      status: "required",
+      message: "AI summary is required for bookmark moves",
     },
   };
 }
 
-function flattenBookmarkTree(tree) {
+export function createBookmarkInventory(tree) {
   const bookmarks = [];
   let folderCount = 0;
 
@@ -52,15 +48,88 @@ function flattenBookmarkTree(tree) {
   };
 }
 
+function collectEmptyFolders(tree) {
+  const emptyFolders = [];
+
+  for (const root of tree) {
+    collectEmptyFolderNode(root, [], 0, false, emptyFolders);
+  }
+
+  return emptyFolders;
+}
+
+function collectEmptyFolderNode(node, folderTrail, depth, isOrganizerSubtree, emptyFolders) {
+  if (node.url) {
+    return true;
+  }
+
+  const title = String(node.title || "").trim();
+  const nextTrail = title ? [...folderTrail, title] : folderTrail;
+  const currentOrganizerSubtree = isOrganizerSubtree || title === ORGANIZER_ROOT_TITLE;
+  let hasRemainingContent = false;
+
+  for (const child of node.children || []) {
+    const childHasRemainingContent = collectEmptyFolderNode(
+      child,
+      nextTrail,
+      depth + 1,
+      currentOrganizerSubtree,
+      emptyFolders,
+    );
+
+    if (childHasRemainingContent) {
+      hasRemainingContent = true;
+    }
+  }
+
+  const isChromeRoot = node.id === "0" || depth <= 1;
+
+  if (isChromeRoot || currentOrganizerSubtree) {
+    return true;
+  }
+
+  if (!hasRemainingContent) {
+    emptyFolders.push({
+      id: node.id,
+      title: title || "未命名文件夹",
+      parentId: node.parentId || "",
+      parentPath: folderTrail.join(" / "),
+      path: nextTrail.join(" / "),
+    });
+    return false;
+  }
+
+  return true;
+}
+
+function buildEmptyFolderCleanupSuggestion(emptyFolders) {
+  if (!emptyFolders.length) {
+    return null;
+  }
+
+  return {
+    id: "cleanup-empty-folders",
+    type: "cleanup-empty-folders",
+    folderPath: ["清理空目录"],
+    reason: "发现空文件夹，可安全清理",
+    confidence: 1,
+    groupType: "cleanup",
+    matchedTerms: [],
+    mediums: [],
+    topDomains: [],
+    bookmarkIds: [],
+    bookmarkCount: 0,
+    emptyFolderIds: emptyFolders.map((folder) => folder.id),
+    emptyFolderCount: emptyFolders.length,
+    emptyFolders: emptyFolders.slice(0, 8),
+  };
+}
+
 function walkNode(node, folderTrail, bookmarks, onFolder) {
   const title = String(node.title || "").trim();
   const nextTrail = title ? [...folderTrail, title] : folderTrail;
 
   if (node.url) {
-    if (folderTrail.includes(ORGANIZER_ROOT_TITLE)) {
-      return;
-    }
-
     const urlObject = safeParseUrl(node.url);
 
     bookmarks.push({
@@ -114,141 +183,6 @@ function detectDuplicateGroups(bookmarks) {
     .sort((left, right) => right.count - left.count);
 }
 
-function buildMoveSuggestions(bookmarks, duplicateIds) {
-  const uniqueBookmarks = bookmarks.filter((bookmark) => !duplicateIds.has(bookmark.id));
-  const categoryBuckets = new Map();
-  const domainBuckets = new Map();
-
-  for (const bookmark of uniqueBookmarks) {
-    const category = classifyBookmark(bookmark);
-
-    if (category) {
-      const bucket = categoryBuckets.get(category.key) || {
-        id: category.key,
-        type: "move",
-        folderPath: category.folderPath,
-        reason: category.reason,
-        confidenceValues: [],
-        bookmarks: [],
-      };
-
-      bucket.bookmarks.push(bookmark);
-      bucket.confidenceValues.push(category.confidence);
-      categoryBuckets.set(category.key, bucket);
-      continue;
-    }
-
-    const bucket = domainBuckets.get(bookmark.domain) || [];
-    bucket.push(bookmark);
-    domainBuckets.set(bookmark.domain, bucket);
-  }
-
-  const suggestions = [];
-  const assignedIds = new Set();
-
-  for (const bucket of categoryBuckets.values()) {
-    if (bucket.bookmarks.length < 2) {
-      continue;
-    }
-
-    bucket.bookmarks.forEach((bookmark) => assignedIds.add(bookmark.id));
-    suggestions.push(buildSuggestion(bucket.folderPath, bucket.bookmarks, {
-      reason: bucket.reason,
-      confidence: average(bucket.confidenceValues),
-    }));
-  }
-
-  for (const [domain, items] of domainBuckets.entries()) {
-    if (!domain || items.length < 3) {
-      continue;
-    }
-
-    const remaining = items.filter((item) => !assignedIds.has(item.id));
-
-    if (remaining.length < 3) {
-      continue;
-    }
-
-    remaining.forEach((bookmark) => assignedIds.add(bookmark.id));
-    suggestions.push(
-      buildSuggestion(["站点归档", domain], remaining, {
-        reason: "同域名聚合",
-        confidence: 0.64,
-      }),
-    );
-  }
-
-  return suggestions.sort((left, right) => {
-    if (right.bookmarkCount !== left.bookmarkCount) {
-      return right.bookmarkCount - left.bookmarkCount;
-    }
-
-    return right.confidence - left.confidence;
-  });
-}
-
-function buildSuggestion(folderPath, bookmarks, meta) {
-  return {
-    id: `${folderPath.join("-")}-${bookmarks[0].id}`,
-    type: "move",
-    folderPath,
-    reason: meta.reason,
-    confidence: Number(meta.confidence.toFixed(2)),
-    bookmarkIds: bookmarks.map((bookmark) => bookmark.id),
-    bookmarkCount: bookmarks.length,
-    bookmarks: bookmarks.slice(0, 6).map((bookmark) => ({
-      id: bookmark.id,
-      title: bookmark.title,
-      url: bookmark.url,
-      domain: bookmark.domain,
-      parentPath: bookmark.parentPath,
-    })),
-  };
-}
-
-function classifyBookmark(bookmark) {
-  const haystack = `${bookmark.title} ${bookmark.domain} ${bookmark.path}`.toLowerCase();
-
-  let bestMatch = null;
-
-  for (const rule of CATEGORY_RULES) {
-    let score = 0;
-    const reasons = [];
-
-    if (matchesDomain(bookmark.domain, rule.domains)) {
-      score += 0.38;
-      reasons.push("域名特征");
-    }
-
-    if (matchesKeyword(haystack, rule.keywords)) {
-      score += 0.3;
-      reasons.push("标题关键词");
-    }
-
-    if (matchesPath(bookmark.path, rule.paths)) {
-      score += 0.2;
-      reasons.push("路径模式");
-    }
-
-    if (score < 0.5) {
-      continue;
-    }
-
-    const candidate = {
-      key: rule.key,
-      folderPath: rule.folderPath,
-      confidence: Math.min(0.95, score),
-      reason: reasons.join(" + "),
-    };
-
-    if (!bestMatch || candidate.confidence > bestMatch.confidence) {
-      bestMatch = candidate;
-    }
-  }
-
-  return bestMatch;
-}
-
 function normalizeUrl(rawUrl) {
   const parsed = safeParseUrl(rawUrl);
 
@@ -285,24 +219,4 @@ function normalizeDomain(domain) {
 function getPathKey(pathname) {
   const firstSegment = pathname.split("/").filter(Boolean)[0];
   return firstSegment || "/";
-}
-
-function matchesDomain(domain, domainRules) {
-  return domainRules.some((rule) => domain === rule || domain.endsWith(`.${rule}`));
-}
-
-function matchesKeyword(haystack, keywords) {
-  return keywords.some((keyword) => haystack.includes(keyword.toLowerCase()));
-}
-
-function matchesPath(pathname, paths) {
-  return paths.some((pathRule) => pathname.toLowerCase().includes(pathRule.toLowerCase()));
-}
-
-function average(values) {
-  if (!values.length) {
-    return 0;
-  }
-
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }

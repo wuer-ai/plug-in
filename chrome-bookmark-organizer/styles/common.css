@@ -43,8 +43,8 @@ select {
 
 .hero {
   position: relative;
-  padding: 24px;
-  border-radius: 28px;
+  padding: 18px;
+  border-radius: var(--radius-large);
   overflow: hidden;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(227, 245, 239, 0.9)),
@@ -64,16 +64,17 @@ select {
 }
 
 .hero h1 {
-  margin-top: 10px;
-  font-size: 28px;
-  line-height: 1.1;
+  margin-top: 8px;
+  font-size: 24px;
+  line-height: 1.15;
 }
 
 .hero p {
-  margin-top: 10px;
+  margin-top: 8px;
   max-width: 560px;
   color: var(--text-muted);
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .eyebrow {
@@ -90,7 +91,7 @@ select {
 }
 
 .panel {
-  padding: 18px;
+  padding: 16px;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-large);
   background: var(--panel-bg);
@@ -116,8 +117,8 @@ select {
 }
 
 .button {
-  min-height: 42px;
-  padding: 0 16px;
+  min-height: 40px;
+  padding: 0 12px;
   border: 0;
   border-radius: 999px;
   background: rgba(18, 113, 95, 0.08);
@@ -150,37 +151,53 @@ select {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .stat-card {
-  padding: 16px;
-  border-radius: var(--radius-medium);
+  display: grid;
+  min-height: 54px;
+  align-content: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-small);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 249, 245, 0.82));
   border: 1px solid rgba(18, 113, 95, 0.1);
 }
 
+.stat-card[data-tone="primary"] {
+  background: linear-gradient(180deg, rgba(242, 255, 250, 0.98), rgba(225, 246, 238, 0.9));
+}
+
 .stat-card strong {
-  display: block;
-  font-size: 28px;
+  font-size: 22px;
+  line-height: 1;
 }
 
 .stat-card span {
-  margin-top: 6px;
-  display: block;
+  min-width: 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-panel {
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
 
 .stack-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .stack-card {
-  padding: 14px;
-  border-radius: var(--radius-medium);
+  padding: 12px;
+  border-radius: var(--radius-small);
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(18, 113, 95, 0.1);
 }
@@ -199,10 +216,101 @@ select {
 }
 
 .mini-list {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   padding-left: 18px;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+.mini-list li + li {
+  margin-top: 6px;
+}
+
+.item-meta {
+  display: block;
+  margin-top: 2px;
+  color: rgba(82, 105, 98, 0.82);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.suggestion-details {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.tag-list-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tag {
+  max-width: 160px;
+  padding: 4px 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(18, 113, 95, 0.09);
+  color: var(--accent-strong);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.suggestion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.suggestion-head {
+  display: grid;
+  gap: 6px;
+}
+
+.suggestion-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.suggestion-title-row::after {
+  content: "展开";
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(18, 113, 95, 0.08);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stack-card[open] .suggestion-title-row::after {
+  content: "收起";
+}
+
+.suggestion-brief {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.suggestion-detail-body {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(18, 113, 95, 0.1);
 }
 
 .empty-state {

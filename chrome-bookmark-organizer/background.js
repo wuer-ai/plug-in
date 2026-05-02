@@ -1,6 +1,6 @@
 import { applyBookmarkPlan, undoLastApply } from "./js/modules/bookmark-actions.js";
-import { refinePlanWithAi } from "./js/modules/ai-providers.js";
-import { analyzeBookmarks } from "./js/modules/bookmark-analysis.js";
+import { createPlanWithAi } from "./js/modules/ai-providers.js";
+import { analyzeBookmarks, createBookmarkInventory } from "./js/modules/bookmark-analysis.js";
 import {
   ensureSettings,
   getLastApply,
@@ -52,8 +52,9 @@ async function handleMessage(message) {
 async function runBookmarkScan() {
   const tree = await chrome.bookmarks.getTree();
   const settings = await getSettings();
+  const inventory = createBookmarkInventory(tree);
   const analyzedPlan = analyzeBookmarks(tree);
-  const refinedPlan = await refinePlanWithAi(analyzedPlan, settings);
+  const refinedPlan = await createPlanWithAi(analyzedPlan, inventory.bookmarks, settings);
 
   await saveLastPlan(refinedPlan);
 

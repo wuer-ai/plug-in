@@ -11,9 +11,9 @@
     <main class="settings-shell">
       <section class="hero">
         <span class="eyebrow">Settings</span>
-        <h1>AI 扩展设置</h1>
+        <h1>AI 汇总设置</h1>
         <p>
-          默认只用本地规则引擎。你也可以开启远程 AI，专门用于低置信度分组补判或文件夹命名优化。
+          收藏移动建议现在完全由 AI 汇总生成。本地扫描只负责清点、重复项与空目录提示。
         </p>
       </section>
 
@@ -21,7 +21,7 @@
         <label class="toggle-row">
           <span>
             <strong>启用远程 AI 增强</strong>
-            <small>关闭时，插件完全按免费优先策略运行。</small>
+            <small>关闭时只会显示清点结果，不会生成可应用的移动分组。</small>
           </span>
           <input id="aiEnabled" type="checkbox" />
         </label>
@@ -29,7 +29,6 @@
         <label class="field">
           <span>Provider</span>
           <select id="provider">
-            <option value="local">local</option>
             <option value="gemini">gemini</option>
             <option value="openai-compatible">openai-compatible</option>
           </select>
@@ -49,8 +48,9 @@
           <input
             id="apiBaseUrl"
             type="text"
-            placeholder="OpenAI 兼容接口可填写，例如 https://api.openai.com/v1"
+            placeholder="填写到 /v1，例如 https://api.openai.com/v1"
           />
+          <small>OpenAI-compatible 会优先使用 /responses，失败后回退 /chat/completions。</small>
         </label>
 
         <label class="field">
@@ -68,14 +68,14 @@
 
         <label class="toggle-row">
           <span>
-            <strong>只做命名优化</strong>
-            <small>开启后，远程 AI 主要优化文件夹名称，不重做核心分类。</small>
+            <strong>AI 全量汇总模式</strong>
+            <small>固定开启：AI 负责生成完整分组，不再只改文件夹名称。</small>
           </span>
-          <input id="remoteNamingOnly" type="checkbox" />
+          <input id="remoteNamingOnly" type="checkbox" checked disabled />
         </label>
 
         <label class="field">
-          <span>低置信度阈值</span>
+          <span>低置信度阈值（保留兼容）</span>
           <input
             id="lowConfidenceThreshold"
             type="number"
@@ -86,8 +86,8 @@
         </label>
 
         <label class="field">
-          <span>单次最多送交 AI 的分组数</span>
-          <input id="maxAiGroupCount" type="number" min="1" max="20" step="1" />
+          <span>单次最多送交 AI 的收藏数</span>
+          <input id="maxAiGroupCount" type="number" min="20" max="1000" step="10" />
         </label>
 
         <div class="button-row">
@@ -96,7 +96,7 @@
         </div>
 
         <div id="settingsStatus" class="status-box">
-          当前默认值已经偏向免费优先，不开启远程 AI 也可以正常使用插件。
+          请配置 Provider、模型名和 API Key；没有 AI 时不会再使用本地规则猜测分类。
         </div>
       </section>
     </main>

@@ -1,161 +1,52 @@
 # Chrome Bookmark Organizer
 
-## Goal
+基于 AI 汇总的 Chrome 收藏夹整理插件。
 
-Build a Chrome extension that cleans up messy bookmarks with a free-first approach, while keeping remote AI API support as an optional enhancement.
+## Current Direction
 
-## Product Direction
+插件不再用本地域名、关键词、路径规则猜测收藏分类。本地流程只负责：
 
-Default behavior should work without any paid API:
+- 读取 Chrome 收藏夹树并展开收藏清单
+- 检测重复收藏
+- 识别空文件夹
+- 预览、应用整理方案，并支持撤销
 
-1. Scan the Chrome bookmarks tree.
-2. Detect duplicates and near-duplicates.
-3. Group by domain, path pattern, and title keywords.
-4. Run local semantic clustering when available.
-5. Show a preview before applying changes.
-6. Support undo or restore from a snapshot.
+收藏移动分组必须由远程 AI Provider 生成。没有配置 AI 时，扫描只会展示清点状态、重复收藏和空目录提示，不会生成本地移动建议。
 
-Remote AI should be optional and disabled by default.
+## AI Flow
 
-## Architecture
+1. 在设置页启用 AI，选择 `gemini` 或 `openai-compatible`。
+2. 填写模型名和 API Key。
+3. OpenAI-compatible 的 API Base URL 填到 `/v1`，插件会优先请求 `/responses`，失败后回退 `/chat/completions`。
+4. 扫描收藏夹时，插件把收藏标题、域名、原文件夹发送给 AI；关闭“仅发送标题与域名”后才会发送完整 URL。
+5. AI 返回严格 JSON 分组：
 
-### 1. Bookmark Ingestion
+```json
+[
+  {
+    "folderPath": ["模型开发", "API 文档"],
+    "reason": "这些收藏都是大模型 API 和开发文档",
+    "confidence": 0.86,
+    "bookmarkIds": ["12", "18"]
+  }
+]
+```
 
-- Read bookmarks from the Chrome Bookmarks API.
-- Convert the tree into a flat working list with:
-  - id
-  - title
-  - url
-  - parent folder
-  - date added
-  - domain
-  - path
+6. AI 最多创建 8 个一级分类，二级分类数量不限制，每个目标路径最多 2 层。
+7. 用户预览后应用，插件会直接在 Chrome 书签栏下创建分类，不再额外创建 `Bookmark Organizer` 一级目录。
 
-### 2. Free-First Classification Layer
+## Files
 
-This layer solves most of the problem without any cloud cost.
-
-- Exact duplicate detection:
-  - same URL
-  - normalized URL match
-- Rule grouping:
-  - same domain
-  - same path prefix
-  - title keyword buckets
-- Heuristic scoring:
-  - likely article
-  - likely tool
-  - likely video
-  - likely docs/reference
-  - likely shopping/product
-
-### 3. Local Semantic Layer
-
-Optional local AI processing in the browser:
-
-- Create embeddings from bookmark titles and lightweight URL/domain signals.
-- Cluster similar bookmarks into suggested folders.
-- Generate confidence scores for each suggestion.
-
-This layer should still be free to run, but may require more device resources.
-
-### 4. Remote AI Provider Layer
-
-Remote AI is only used when the user enables it.
-
-- Provider interface:
-  - `classify(items)`
-  - `cluster(items)`
-  - `suggestFolderNames(groups)`
-- Initial provider plan:
-  - `local` provider
-  - `gemini` provider
-  - `openai-compatible` provider
-
-Recommended policy:
-
-- Use local results first.
-- Call remote AI only for low-confidence groups or folder naming refinement.
-- Never require a remote API key for core features.
-
-### 5. Safety Layer
-
-- Dry-run preview before any change.
-- Snapshot current bookmark structure before apply.
-- One-click rollback for the last operation.
-- Clear log of moved, merged, or skipped items.
-
-## Suggested User Flow
-
-1. Click "Scan bookmarks".
-2. Review duplicate results.
-3. Review suggested categories.
-4. Optionally enable AI refinement.
-5. Preview folder moves.
-6. Apply changes.
-7. Undo if needed.
-
-## MVP Scope
-
-- Bookmark scan
-- Duplicate detection
-- Domain and keyword grouping
-- Suggested target folders
-- Preview changes
-- Apply changes
-- Undo from snapshot
-
-## Phase 2
-
-- Local semantic clustering
-- Remote AI provider settings
-- Low-confidence escalation to API
-- Dead link detection
-- "Unread later" and "archive" suggestions
-
-## Configuration Principles
-
-- Remote AI disabled by default
-- API keys stored only in extension settings
-- Minimal data sent to remote providers
-- User can choose which providers are allowed
-- User can limit remote AI to titles only
-
-## Notes
-
-The extension should be useful even if the user never enables any API key.
-
-## Current Scaffold
-
-The project now includes a loadable Chrome Extension skeleton:
-
-- `manifest.json`: Manifest V3 entry
-- `background.js`: message router and scan/apply/undo workflow
-- `popup.html` + `js/popup.js`: scan preview panel
-- `options.html` + `js/options.js`: AI provider settings
-- `js/modules/bookmark-analysis.js`: local duplicate detection and grouping rules
-- `js/modules/bookmark-actions.js`: apply plan and undo snapshot
-- `js/modules/ai-providers.js`: optional Gemini and OpenAI-compatible naming refinement
+- `background.js`: 扫描、AI 汇总、应用、撤销的消息路由
+- `js/modules/bookmark-analysis.js`: 收藏清点、重复检测、空目录检测
+- `js/modules/ai-providers.js`: Gemini/OpenAI-compatible 汇总提示词、请求和 JSON 解析
+- `js/modules/bookmark-actions.js`: 应用 AI 方案并记录撤销快照
+- `popup.html` + `js/popup.js`: 预览和操作入口
+- `options.html` + `js/options.js`: AI Provider 设置
 
 ## How To Load
 
-1. Open Chrome and go to `chrome://extensions/`
-2. Enable Developer Mode
-3. Click "Load unpacked"
-4. Select this folder: `chrome-bookmark-organizer`
-
-## Current Behavior
-
-- Scans bookmarks locally
-- Detects exact duplicates after URL normalization
-- Suggests folders using category rules and domain grouping
-- Applies suggestions into a `Bookmark Organizer` root folder
-- Saves the last apply snapshot for undo
-- Supports optional remote AI naming refinement in settings
-
-## Next Build Targets
-
-- Add local semantic embeddings and clustering
-- Add duplicate review actions
-- Add dead-link check
-- Improve apply preview with item-level diff
+1. 打开 Chrome 的 `chrome://extensions/`
+2. 开启 Developer Mode
+3. 点击 “Load unpacked”
+4. 选择 `chrome-bookmark-organizer` 文件夹
