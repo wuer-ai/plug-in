@@ -26,36 +26,67 @@
           <input id="aiEnabled" type="checkbox" />
         </label>
 
-        <label class="field">
-          <span>Provider</span>
-          <select id="provider">
-            <option value="gemini">gemini</option>
-            <option value="openai-compatible">openai-compatible</option>
-          </select>
-        </label>
+        <div class="model-section">
+          <div class="section-head">
+            <strong>模型列表</strong>
+            <small>可添加多个模型，扫描时使用标记为“当前”的那个。</small>
+          </div>
+          <ul id="modelList" class="model-list"></ul>
+
+          <div id="modelForm" class="model-form">
+            <strong id="modelFormTitle">添加模型</strong>
+            <label class="field">
+              <span>显示名称</span>
+              <input id="modelLabel" type="text" placeholder="例如：公司网关 GPT" />
+            </label>
+            <label class="field">
+              <span>Provider</span>
+              <select id="provider">
+                <option value="gemini">gemini</option>
+                <option value="openai-compatible">openai-compatible</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>模型名</span>
+              <input
+                id="model"
+                type="text"
+                placeholder="例如：gemini-2.5-flash 或 gpt-4.1-mini"
+              />
+            </label>
+            <label class="field">
+              <span>API Base URL</span>
+              <input
+                id="apiBaseUrl"
+                type="text"
+                placeholder="填写到 /v1，例如 https://api.openai.com/v1"
+              />
+              <small>OpenAI-compatible 支持 /v1 或完整接口地址，优先使用 Responses；接口不兼容时回退 Chat Completions。Gemini 请填写原生接口的 /v1beta 地址；Gemini 模型走 OpenAI 兼容网关时，请选择 openai-compatible。</small>
+            </label>
+            <label class="field">
+              <span>API Key</span>
+              <input id="apiKey" type="password" placeholder="仅保存在当前扩展存储中" />
+            </label>
+            <div class="button-row">
+              <button id="testModelButton" class="button button-subtle" type="button">测试连接</button>
+              <button id="saveModelButton" class="button button-primary" type="button">添加模型</button>
+              <button id="cancelEditButton" class="button button-subtle" type="button" hidden>取消编辑</button>
+            </div>
+            <div id="modelTestStatus" class="status-box" data-tone="info">
+              填写后可先点“测试连接”，会用该配置发送一次最小请求。
+            </div>
+          </div>
+        </div>
 
         <label class="field">
-          <span>模型名</span>
-          <input
-            id="model"
-            type="text"
-            placeholder="例如：gemini-2.5-flash 或 gpt-4.1-mini"
-          />
-        </label>
-
-        <label class="field">
-          <span>API Base URL</span>
-          <input
-            id="apiBaseUrl"
-            type="text"
-            placeholder="填写到 /v1，例如 https://api.openai.com/v1"
-          />
-          <small>OpenAI-compatible 会优先使用 /responses，失败后回退 /chat/completions。</small>
-        </label>
-
-        <label class="field">
-          <span>API Key</span>
-          <input id="apiKey" type="password" placeholder="仅保存在当前扩展存储中" />
+          <span>自定义整理要求</span>
+          <textarea
+            id="customInstructions"
+            rows="5"
+            maxlength="2000"
+            placeholder="例如：&#10;- 工作相关的放在“工作”一级目录下&#10;- 不要创建超过 6 个一级目录&#10;- 学习资料按学科分类"
+          ></textarea>
+          <small>会追加到 AI 整理提示词中，下次扫描生效，最多 2000 字。</small>
         </label>
 
         <label class="toggle-row">

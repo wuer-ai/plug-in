@@ -16,6 +16,9 @@ export const DEFAULT_SETTINGS = {
   remoteNamingOnly: false,
   lowConfidenceThreshold: 0.72,
   maxAiGroupCount: 300,
+  customInstructions: "",
+  models: [],
+  activeModelId: "",
 };
 
 export const TRACKING_QUERY_KEYS = new Set([

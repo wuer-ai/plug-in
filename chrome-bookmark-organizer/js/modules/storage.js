@@ -21,10 +21,21 @@ export async function getSettings() {
 }
 
 export async function saveSettings(settings) {
-  const normalized = {
+  const merged = {
     ...DEFAULT_SETTINGS,
     ...settings,
   };
+  // The active model is mirrored into the flat fields the scan pipeline reads.
+  const active = (merged.models || []).find((model) => model.id === merged.activeModelId);
+  const normalized = active
+    ? {
+        ...merged,
+        provider: active.provider,
+        model: active.model,
+        apiBaseUrl: active.apiBaseUrl,
+        apiKey: active.apiKey,
+      }
+    : merged;
 
   await chrome.storage.local.set({
     [STORAGE_KEYS.settings]: normalized,

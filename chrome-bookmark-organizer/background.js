@@ -54,7 +54,16 @@ async function runBookmarkScan() {
   const settings = await getSettings();
   const inventory = createBookmarkInventory(tree);
   const analyzedPlan = analyzeBookmarks(tree);
-  const refinedPlan = await createPlanWithAi(analyzedPlan, inventory.bookmarks, settings);
+  // A scan may wait for a long SSE body. Keep the worker active only during the bounded AI request.
+  const heartbeat = setInterval(() => {
+    void chrome.runtime.getPlatformInfo().catch(() => {});
+  }, 20000);
+  let refinedPlan;
+  try {
+    refinedPlan = await createPlanWithAi(analyzedPlan, inventory.bookmarks, settings);
+  } finally {
+    clearInterval(heartbeat);
+  }
 
   await saveLastPlan(refinedPlan);
 

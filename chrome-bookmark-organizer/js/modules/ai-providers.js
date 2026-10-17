@@ -45,6 +45,14 @@ export async function createPlanWithAi(basePlan, bookmarks, settings) {
     };
   }
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 180000);
+  settings = {
+    ...settings,
+    apiKey: settings.apiKey?.trim(),
+    model: settings.model?.trim(),
+    requestSignal: controller.signal,
+  };
   try {
     const provider = createProvider(settings);
     const maxBookmarkCount = Math.min(
@@ -87,9 +95,11 @@ export async function createPlanWithAi(basePlan, bookmarks, settings) {
       ai: {
         provider: settings.provider,
         status: "error",
-        message: error instanceof Error ? error.message : "Unknown AI error",
+        message: redactApiKey(error instanceof Error ? error.message : "Unknown AI error", settings.apiKey),
       },
     };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -106,7 +116,7 @@ function createProvider(settings) {
 
 function createGeminiProvider() {
   return {
-    async organizeBookmarks(bookmarks, settings) {
+    async complete(prompt, settings) {
       if (!settings.apiKey) {
         throw new Error("Gemini API Key is required.");
       }
@@ -115,14 +125,14 @@ function createGeminiProvider() {
         throw new Error("Please configure a Gemini model name first.");
       }
 
-      const prompt = buildOrganizerPrompt(bookmarks, settings);
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-        settings.model,
-      )}:generateContent?key=${encodeURIComponent(settings.apiKey)}`;
-      const response = await fetch(url, {
+      const baseUrl = normalizeApiBaseUrl(settings.apiBaseUrl, "gemini");
+      const model = settings.model.trim().replace(/^models\//, "");
+      const url = `${baseUrl}/models/${encodeURIComponent(model)}:generateContent`;
+      const result = await fetchApiText(url, settings.apiKey, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-goog-api-key": settings.apiKey.trim(),
         },
         body: JSON.stringify({
           contents: [
@@ -135,26 +145,29 @@ function createGeminiProvider() {
             },
           ],
         }),
-      });
+      }, settings.requestSignal);
 
-      if (!response.ok) {
-        throw new Error(`Gemini request failed: ${response.status}`);
+      if (!result.ok) {
+        throw new Error(result.error);
       }
 
-      const data = await response.json();
+      const data = JSON.parse(result.text);
       const text =
         data?.candidates?.[0]?.content?.parts
           ?.map((part) => part.text || "")
           .join("\n") || "";
 
-      return parseOrganizerResponse(text);
+      return text;
+    },
+    async organizeBookmarks(bookmarks, settings) {
+      return parseOrganizerResponse(await this.complete(buildOrganizerPrompt(bookmarks, settings), settings));
     },
   };
 }
 
 function createOpenAiCompatibleProvider() {
   return {
-    async organizeBookmarks(bookmarks, settings) {
+    async complete(prompt, settings, instructions = ORGANIZER_INSTRUCTIONS) {
       if (!settings.apiKey) {
         throw new Error("OpenAI-compatible API Key is required.");
       }
@@ -163,10 +176,7 @@ function createOpenAiCompatibleProvider() {
         throw new Error("Please configure the model name first.");
       }
 
-      const apiBaseUrl = settings.apiBaseUrl?.trim() || "https://api.openai.com/v1";
-      const prompt = buildOrganizerPrompt(bookmarks, settings);
-      const instructions =
-        'You organize browser bookmarks for a Chinese-speaking user. Return a strict JSON object only: {"groups":[...]}.';
+      const apiBaseUrl = normalizeApiBaseUrl(settings.apiBaseUrl);
       const responsesResult = await requestOpenAiResponses({
         apiBaseUrl,
         settings,
@@ -175,74 +185,110 @@ function createOpenAiCompatibleProvider() {
       });
 
       if (responsesResult.ok) {
-        return parseOrganizerResponse(responsesResult.text);
+        return responsesResult.text;
       }
 
-      const response = await fetch(`${apiBaseUrl.replace(/\/+$/, "")}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${settings.apiKey}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
+      // Authentication, rate limits and network errors are not endpoint compatibility failures.
+      if (!canFallbackEndpoint(responsesResult.status)) {
+        throw new Error(responsesResult.error);
+      }
+
+      const body = {
+        model: settings.model,
+        stream: false,
+        max_completion_tokens: 4096,
+        response_format: {
+          type: "json_object",
         },
-        body: JSON.stringify({
-          model: settings.model,
-          temperature: 0.1,
-          stream: false,
-          max_completion_tokens: 4096,
-          response_format: {
-            type: "json_object",
+        messages: [
+          {
+            role: "system",
+            content: instructions,
           },
-          messages: [
-            {
-              role: "system",
-              content: instructions,
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-        }),
-      });
-
-      const responseText = await response.text();
-
-      if (!response.ok) {
-        throw new Error(
-          `OpenAI-compatible request failed: ${response.status} ${responseText.slice(0, 200)}`,
-        );
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      };
+      let result = await fetchOpenAiChat(apiBaseUrl, settings.apiKey, body, settings.requestSignal);
+      if (isUnsupportedOption(result)) {
+        const fallbackBody = { ...body };
+        delete fallbackBody.response_format;
+        delete fallbackBody.max_completion_tokens;
+        result = await fetchOpenAiChat(apiBaseUrl, settings.apiKey, fallbackBody, settings.requestSignal);
       }
-
-      const text = extractOpenAiCompatibleContent(responseText);
-      return parseOrganizerResponse(text);
+      if (!result.ok) {
+        throw new Error(`${responsesResult.error}; ${result.error}`);
+      }
+      return extractOpenAiCompatibleContent(result.text);
+    },
+    async organizeBookmarks(bookmarks, settings) {
+      return parseOrganizerResponse(await this.complete(buildOrganizerPrompt(bookmarks, settings), settings));
     },
   };
+}
+
+const ORGANIZER_INSTRUCTIONS =
+  'You organize browser bookmarks for a Chinese-speaking user. Return a strict JSON object only: {"groups":[...]}.';
+
+// Sends a tiny request through the same code path a real scan uses.
+export async function testModelConnection(config) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+  const settings = {
+    ...config,
+    apiKey: config.apiKey?.trim(),
+    model: config.model?.trim(),
+    requestSignal: controller.signal,
+  };
+  const started = Date.now();
+  try {
+    const text = await createProvider(settings).complete(
+      'Reply with this JSON object only: {"ok":true}',
+      settings,
+      "You are a connectivity probe. Reply with a strict JSON object only.",
+    );
+    if (!String(text).trim()) {
+      throw new Error("接口已连通，但模型没有返回内容。");
+    }
+    return { ok: true, latencyMs: Date.now() - started, message: `连接成功（${Date.now() - started} ms）` };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return { ok: false, message: redactApiKey(message, settings.apiKey) };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function requestOpenAiResponses({ apiBaseUrl, settings, prompt, instructions }) {
   const requestBody = {
     model: settings.model,
-    input: prompt,
+    input: [{ type: "message", role: "user", content: [{ type: "input_text", text: prompt }] }],
     instructions,
-    temperature: 0.1,
     max_output_tokens: 4096,
-    stream: false,
+    stream: true,
+    store: false,
     text: {
       format: {
         type: "json_object",
       },
     },
   };
-  const firstAttempt = await fetchOpenAiResponses(apiBaseUrl, settings.apiKey, requestBody);
+  const firstAttempt = await fetchOpenAiResponses(apiBaseUrl, settings.apiKey, requestBody, settings.requestSignal);
 
   if (firstAttempt.ok) {
     return firstAttempt;
   }
 
+  if (!isUnsupportedOption(firstAttempt)) {
+    return firstAttempt;
+  }
+
   const fallbackBody = { ...requestBody };
   delete fallbackBody.text;
-  const fallbackAttempt = await fetchOpenAiResponses(apiBaseUrl, settings.apiKey, fallbackBody);
+  delete fallbackBody.max_output_tokens;
+  const fallbackAttempt = await fetchOpenAiResponses(apiBaseUrl, settings.apiKey, fallbackBody, settings.requestSignal);
 
   if (fallbackAttempt.ok) {
     return fallbackAttempt;
@@ -250,50 +296,128 @@ async function requestOpenAiResponses({ apiBaseUrl, settings, prompt, instructio
 
   return {
     ok: false,
+    status: fallbackAttempt.status,
     text: "",
     error: `${firstAttempt.error}; ${fallbackAttempt.error}`,
   };
 }
 
-async function fetchOpenAiResponses(apiBaseUrl, apiKey, body) {
-  const response = await fetch(`${apiBaseUrl.replace(/\/+$/, "")}/responses`, {
+async function fetchOpenAiResponses(apiBaseUrl, apiKey, body, signal) {
+  const result = await fetchApiText(`${apiBaseUrl}/responses`, apiKey, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey.trim()}`,
       "Content-Type": "application/json",
-      Accept: "application/json",
+      Accept: "text/event-stream, application/json",
     },
     body: JSON.stringify(body),
-  });
-  const responseText = await response.text();
-
-  if (!response.ok) {
-    return {
-      ok: false,
-      text: "",
-      error: `Responses API failed: ${response.status} ${formatDebugPreview(responseText)}`,
-    };
+  }, signal);
+  if (!result.ok) {
+    return result;
   }
 
   try {
     return {
       ok: true,
-      text: extractOpenAiResponsesContent(responseText),
+      text: extractOpenAiResponsesContent(result.text),
       error: "",
     };
   } catch (error) {
     return {
       ok: false,
+      status: 200,
       text: "",
       error: error instanceof Error ? error.message : "Failed to parse Responses API result",
     };
   }
 }
 
+function normalizeApiBaseUrl(value, provider = "openai-compatible") {
+  const defaultUrl = provider === "gemini"
+    ? "https://generativelanguage.googleapis.com/v1beta"
+    : "https://api.openai.com/v1";
+  // Older Gemini settings inherited the OpenAI default even though it was ignored.
+  const raw = value?.trim();
+  const url = new URL(!raw || (provider === "gemini" && raw === "https://api.openai.com/v1")
+    ? defaultUrl : raw);
+  if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
+    throw new Error("API 地址需为 HTTP/HTTPS 地址，不要包含用户名、密码、查询参数或 #。密钥请填在 API Key 栏。");
+  }
+  url.pathname = url.pathname.replace(/\/+$/, "").replace(/\/(?:responses|chat\/completions)$/i, "");
+  if (!url.pathname || url.pathname === "/") {
+    url.pathname = provider === "gemini" ? "/v1beta" : "/v1";
+  }
+  return url.href.replace(/\/+$/, "");
+}
+
+function canFallbackEndpoint(status) {
+  return [400, 404, 405, 415, 422, 501].includes(status);
+}
+
+function isUnsupportedOption(result) {
+  return [400, 422].includes(result.status)
+    && /unsupported|not supported|unknown|unrecognized|not allowed|unexpected|不支持/i.test(result.error)
+    && /text|format|max_output_tokens|max_completion_tokens/i.test(result.error);
+}
+
+async function fetchOpenAiChat(apiBaseUrl, apiKey, body, signal) {
+  return fetchApiText(`${apiBaseUrl}/chat/completions`, apiKey, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey.trim()}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(body),
+  }, signal);
+}
+
+async function fetchApiText(url, apiKey, options, signal) {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  // Report a useful error before Chrome terminates a worker waiting for headers.
+  let timer = setTimeout(() => controller.abort(), 25000);
+  try {
+    if (signal?.aborted) {
+      controller.abort();
+      throw new Error("Aborted");
+    }
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer);
+    timer = setTimeout(() => controller.abort(), 120000);
+    const text = await response.text();
+    const safeText = redactApiKey(text, apiKey);
+    return {
+      ok: response.ok,
+      status: response.status,
+      text,
+      error: response.ok ? "" : `API ${new URL(url).pathname} 请求失败（HTTP ${response.status}）：${formatDebugPreview(safeText)}`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      text: "",
+      error: controller.signal.aborted
+        ? "API 请求超时，请检查网关响应速度，或减少单次送交 AI 的收藏数。"
+        : "无法连接 API，请检查地址、网络、证书和扩展的网站访问权限。",
+    };
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+  }
+}
+
+function redactApiKey(text, apiKey) {
+  return [apiKey, apiKey?.trim(), apiKey ? encodeURIComponent(apiKey) : ""]
+    .filter(Boolean).reduce((value, secret) => value.split(secret).join("[REDACTED]"), text);
+}
+
 function extractOpenAiCompatibleContent(responseText) {
   const trimmed = responseText.trim();
 
-  if (!trimmed.startsWith("data:")) {
+  if (!isSseResponse(trimmed)) {
     const data = JSON.parse(trimmed);
     const content =
       data?.choices?.[0]?.message?.content ||
@@ -316,11 +440,14 @@ function extractOpenAiCompatibleContent(responseText) {
 function extractOpenAiResponsesContent(responseText) {
   const trimmed = responseText.trim();
 
-  if (trimmed.startsWith("data:")) {
+  if (isSseResponse(trimmed)) {
     return parseOpenAiSseContent(trimmed);
   }
 
   const data = JSON.parse(trimmed);
+  if (data.error || ["failed", "incomplete"].includes(data.status)) {
+    throw new Error(`Responses API 返回未完成结果：${formatDebugPreview(JSON.stringify(data.error || data.incomplete_details || data.status))}`);
+  }
   const outputText =
     data?.output_text ||
     (data?.output || [])
@@ -337,11 +464,16 @@ function extractOpenAiResponsesContent(responseText) {
   );
 }
 
+function isSseResponse(text) {
+  return /^(?:data:|event:|:)/m.test(text);
+}
+
 function parseOpenAiSseContent(text) {
   const chunks = [];
   const eventTypes = new Set();
   let sawEmptyChoices = false;
   let sawUsageOnlyChunk = false;
+  let completedText = "";
 
   for (const line of text.split(/\r?\n/)) {
     const trimmedLine = line.trim();
@@ -362,6 +494,14 @@ function parseOpenAiSseContent(text) {
     }
 
     const data = JSON.parse(payload);
+    if (data.error || ["error", "response.failed", "response.incomplete"].includes(data.type)) {
+      const detail = data.error || data.response?.error || data.response?.incomplete_details || data.type;
+      throw new Error(`API 返回流式错误或未完成结果：${formatDebugPreview(JSON.stringify(detail))}`);
+    }
+    if (data.type === "response.completed") {
+      completedText = data.response?.output_text || (data.response?.output || [])
+        .flatMap((item) => item.content || []).map((item) => item.text || "").join("");
+    }
     const choices = data?.choices;
     const responseDelta = data?.delta;
     const outputTextDelta = data?.type === "response.output_text.delta" ? data.delta : "";
@@ -393,7 +533,7 @@ function parseOpenAiSseContent(text) {
     }
   }
 
-  const content = chunks.join("");
+  const content = chunks.join("") || completedText;
 
   if (!content.trim()) {
     const diagnostic = [
@@ -450,12 +590,24 @@ function buildOrganizerPrompt(bookmarks, settings) {
     "不要因为不确定就省略收藏；如果少量收藏确实无法判断用途，可以放入“待进一步整理”，但这个分组只能作为最后兜底。",
     "最终 bookmarkIds 覆盖数量应尽量接近输入数量，不能只处理看起来最容易分类的一部分。",
     "文件夹名称必须是简体中文，短而具体，不要包含斜杠、冒号、引号等非法字符。",
+    ...buildCustomInstructionLines(settings.customInstructions),
     "只返回 JSON 对象，不要解释、不要 Markdown。",
     "JSON 顶层必须是对象，格式必须为：",
     '{"groups":[{"folderPath":["一级文件夹","可选二级文件夹"],"reason":"为什么这些收藏应归为一组","confidence":0.0,"bookmarkIds":["id1","id2"]}]}',
     `bookmarkIds 只能使用输入里存在的 id。不要输出空分组。一级目录数量不能超过 ${MAX_TOP_LEVEL_CATEGORIES}，groups 数组长度不限。`,
     JSON.stringify(payload, null, 2),
   ].join("\n");
+}
+
+function buildCustomInstructionLines(value) {
+  const text = String(value || "").trim().slice(0, 2000);
+  if (!text) {
+    return [];
+  }
+  return [
+    "用户的自定义整理要求如下（优先满足；与下方 JSON 输出格式冲突时以输出格式为准）：",
+    text,
+  ];
 }
 
 function parseOrganizerResponse(text) {

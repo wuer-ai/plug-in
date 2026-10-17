@@ -17,7 +17,7 @@
 
 1. 在设置页启用 AI，选择 `gemini` 或 `openai-compatible`。
 2. 填写模型名和 API Key。
-3. OpenAI-compatible 的 API Base URL 填到 `/v1`，插件会优先请求 `/responses`，失败后回退 `/chat/completions`。
+3. OpenAI-compatible 的 API Base URL 可填到 `/v1`，也可填完整的 `/responses` 或 `/chat/completions` 地址。仅填写域名时会补上 `/v1`；自定义路径前缀会保留。插件优先请求流式 `/responses`（兼容 Codex/Sub2API），只在接口不兼容时回退 `/chat/completions`。鉴权、网络、限流和服务异常会直接显示原始状态，不重复请求。Gemini 原生协议使用设置中的 `/v1beta` 地址；通过 OpenAI 兼容网关调用 Gemini 模型时请选择 `openai-compatible`。
 4. 扫描收藏夹时，插件把收藏标题、域名、原文件夹发送给 AI；关闭“仅发送标题与域名”后才会发送完整 URL。
 5. AI 返回严格 JSON 分组：
 
@@ -50,3 +50,9 @@
 2. 开启 Developer Mode
 3. 点击 “Load unpacked”
 4. 选择 `chrome-bookmark-organizer` 文件夹
+
+修改代码后，在扩展管理页点击该扩展的刷新按钮，再重新打开设置页和插件弹窗。
+
+## Verification
+
+在本目录运行 `node --test tests/ai-providers.test.mjs`。测试使用模拟接口，覆盖地址拼接、Responses 参数兼容、SSE 解析、Chat 回退、错误诊断和密钥脱敏，不请求付费模型。
